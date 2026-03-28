@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>תודה על הזמנתך!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Assistant', sans-serif; }
+    </style>
+</head>
+<body class="bg-stone-50 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-6">
+        <div class="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-4xl">
+            ✓
+        </div>
+        
+        <h1 class="text-3xl font-bold text-stone-800">ההזמנה התקבלה בהצלחה 🎉</h1>
+        
+        <div class="bg-stone-50 p-4 rounded-xl space-y-2 text-stone-600">
+            <p class="text-lg">תודה רבה <span id="customerName" class="font-bold text-stone-800"></span>!</p>
+            <p>הזמנתך בסך <span id="orderTotal" class="font-bold text-stone-800"></span> ₪ התקבלה.</p>
+        </div>
+        
+        <p class="text-stone-500">ההזמנה בדרך אליך, ניצור קשר לפני הגעה 🙏</p>
+        
+        <a href="/" class="inline-block w-full bg-stone-800 text-white py-3 px-6 rounded-xl font-medium hover:bg-stone-700 transition-colors">
+            חזרה לחנות
+        </a>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+    <script>
+        (function() {
+            emailjs.init("yr7JJZTN4rtC3h8ni");
+        })();
+
+        // Retrieve data from localStorage
+        const name = localStorage.getItem('order_name') || 'לקוח יקר';
+        const email = localStorage.getItem('order_email') || '';
+        const phone = localStorage.getItem('order_phone') || '';
+        const total = localStorage.getItem('order_total') || '0';
+        
+        // Display data
+        document.getElementById('customerName').textContent = name;
+        document.getElementById('orderTotal').textContent = total;
+        
+        // Function to build order summary and send email
+        function sendOrderEmail() {
+            let rawCart = localStorage.getItem("cart") || localStorage.getItem("neshamah_cart");
+            console.log("RAW CART:", rawCart);
+
+            let cart = [];
+            try {
+                cart = JSON.parse(rawCart) || [];
+            } catch (e) {
+                console.log("JSON ERROR", e);
+            }
+
+            console.log("PARSED CART:", cart);
+
+            let summary = "לא נמצאו מוצרים בעגלה";
+            let subtotal = 0;
+            let shippingText = "0 ₪";
+            let finalTotal = 0;
+
+            if (cart && cart.length > 0) {
+                summary = cart.map((item, index) => {
+                    const itemName = item.name || item.title || item.productName || "מוצר ללא שם";
+                    const itemQty = item.quantity || item.qty || item.amount || 1;
+                    const itemPrice = item.price || item.cost || 0;
+                    
+                    subtotal += (itemPrice * itemQty);
+                    
+                    return `${index + 1}. ${itemName} | כמות: ${itemQty} | מחיר: ${itemPrice} ₪`;
+                }).join('\n');
+
+                const shippingCost = subtotal >= 199 ? 0 : 35;
+                shippingText = shippingCost === 0 ? "משלוח חינם 🎁" : `${shippingCost} ₪`;
+                finalTotal = subtotal + shippingCost;
+            }
+
+            console.log("SUMMARY:\n", summary);
+            console.log("TOTAL:", finalTotal);
+
+            // Only send if we have an email and cart
+            if (email && cart.length > 0) {
+                const templateParams = {
+                    name: name,
+                    email: email,
+                    phone: phone,
+                    cart: summary,
+                    subtotal: subtotal.toString(),
+                    shipping: shippingText,
+                    total: finalTotal.toString()
+                };
+
+                emailjs.send('service_5x4f91a', 'template_r8fypnr', templateParams)
+                    .then(function(response) {
+                        console.log('EmailJS SUCCESS!', response.status, response.text);
+                        // Clean up localStorage after successful send
+                        localStorage.removeItem('cart');
+                        localStorage.removeItem('neshamah_cart');
+                        localStorage.removeItem('order_name');
+                        localStorage.removeItem('order_email');
+                        localStorage.removeItem('order_phone');
+                        localStorage.removeItem('order_total');
+                    }, function(error) {
+                        console.error('EmailJS ERROR...', error);
+                    });
+            } else {
+                console.log("Skipping EmailJS: No email provided or cart is empty.");
+                // Clean up anyway if there's no email to send to
+                localStorage.removeItem('cart');
+                localStorage.removeItem('neshamah_cart');
+                localStorage.removeItem('order_name');
+                localStorage.removeItem('order_email');
+                localStorage.removeItem('order_phone');
+                localStorage.removeItem('order_total');
+            }
+        }
+
+        // Run the email sending process
+        sendOrderEmail();
+    </script>
+</body>
+</html>
